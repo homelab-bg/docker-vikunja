@@ -1,0 +1,49 @@
+---
+# Single all-in-one Vikunja container (API + frontend), SQLite - no separate
+# Postgres/MySQL container. This is a homelab-scale task tracker; Vikunja
+# officially supports SQLite and it's one less service to run/back up.
+# Switch VIKUNJA_DATABASE_TYPE + add a db service if load ever needs it.
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-size: "1m"
+    max-file: "1"
+    tag: "{{.Name}}"
+
+x-common-labels: &default-labels
+  logging_jobname: "containerlogs"
+  stackname: ${STACK_NAME:-vikunja}
+
+services:
+  vikunja:
+    image: vikunja/vikunja:${VIKUNJA_VER:-2.8.0}
+    container_name: vikunja
+    restart: unless-stopped
+    environment:
+      VIKUNJA_SERVICE_PUBLICURL: ${VIKUNJA_PUBLICURL:?set VIKUNJA_PUBLICURL to the full URL Vikunja is reached at}
+      # Confirmed via Vikunja's own config docs: with no secret set, a new
+      # random one is generated on every startup/restart, invalidating every
+      # issued session token each time. Must be set explicitly to persist
+      # logins across restarts - generate with `openssl rand -hex 32`.
+      VIKUNJA_SERVICE_SECRET: "${VIKUNJA_SERVICE_SECRET:?set VIKUNJA_SERVICE_SECRET, generated via openssl rand -hex 32}"
+      VIKUNJA_SERVICE_ENABLEREGISTRATION: ${VIKUNJA_ENABLE_REGISTRATION:-false}
+      VIKUNJA_DATABASE_TYPE: sqlite
+    volumes:
+      # SQLite db + uploaded files - opaque app state, named volumes (not a
+      # bind mount) so identity is stable regardless of which directory this
+      # repo is cloned into - see docker-postfix's README for why. Override
+      # with a real path (e.g. a ZFS dataset) via the *_PATH vars below.
+      - ${VIKUNJA_DB_PATH:-vikunja_db}:/db
+      - ${VIKUNJA_FILES_PATH:-vikunja_files}:/app/vikunja/files
+    ports:
+      - "3456:3456"
+    labels:
+      <<: *default-labels
+    logging: *default-logging
+
+volumes:
+  vikunja_db:
+    name: vikunja_db
+  vikunja_files:
+    name: vikunja_files

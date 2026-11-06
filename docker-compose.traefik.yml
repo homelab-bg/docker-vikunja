@@ -1,0 +1,28 @@
+---
+# Traefik overlay - optional, same pattern as every other docker-* stack in
+# this engagement. Apply only if you want Vikunja reachable via a real
+# HTTPS hostname through the shared Traefik instance:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+#
+# Vikunja only sits on this one Docker network, so there's no multi-network
+# ambiguity for Traefik's Docker provider to guess wrong on here - unlike
+# docker-grafana-stack's grafana, no traefik.docker.network pin is needed.
+services:
+  vikunja:
+    ports: !reset []
+    expose:
+      - 3456
+    networks:
+      - traefik
+    labels:
+      traefik.enable: true
+      traefik.http.routers.vikunja.rule: Host(`${VIKUNJA_HOST:?set VIKUNJA_HOST to Vikunja's hostname}`)
+      traefik.http.routers.vikunja.tls: true
+      traefik.http.routers.vikunja.tls.certresolver: letsencrypt
+      traefik.http.services.vikunja.loadbalancer.server.port: "3456"
+
+networks:
+  traefik:
+    name: ${NETWORK:-traefik}
+    external: true
