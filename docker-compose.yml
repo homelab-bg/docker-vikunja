@@ -40,6 +40,11 @@ services:
       - "3456:3456"
     labels:
       <<: *default-labels
+      homepage.group: Apps
+      homepage.name: Vikunja
+      homepage.icon: vikunja.png
+      homepage.href: ${VIKUNJA_PUBLICURL}
+      homepage.description: Task tracker
     logging: *default-logging
 
 volumes:
